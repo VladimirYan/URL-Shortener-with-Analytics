@@ -16,6 +16,11 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:latest
@@ -25,6 +30,11 @@ services:
       - "6380:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   kafka:
     image: bitnami/kafka:latest
@@ -47,10 +57,10 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
+      test: ["CMD", "bash", "-lc", "kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -62,47 +72,46 @@ services:
     ports:
       - "8081:8080"
     depends_on:
-      kafka:
-        condition: service_healthy
+      - kafka
 
   api-service:
     build:
-      context: ./api-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: api-service/Dockerfile
     container_name: api-service
     restart: always
     ports:
       - "8080:8080"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/shortener_db
-      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATASOURCE_USERNAME: shortener
+      SPRING_DATASOURCE_PASSWORD: shortenerpass
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: "6379"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      kafka:
-        condition: service_healthy
+      - postgres
+      - redis
+      - kafka
 
   redirect-service:
     build:
-      context: ./redirect-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: redirect-service/Dockerfile
     container_name: redirect-service
     restart: always
     ports:
       - "8082:8082"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/shortener_db
-      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATASOURCE_USERNAME: shortener
+      SPRING_DATASOURCE_PASSWORD: shortenerpass
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: "6379"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      kafka:
-        condition: service_healthy
+      - postgres
+      - redis
+      - kafka

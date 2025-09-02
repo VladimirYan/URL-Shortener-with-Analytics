@@ -1,4 +1,9 @@
 spring:
+  security:
+    user:
+      name: dev
+      password: devpass
+
   application:
     name: url-shortener-api
 
