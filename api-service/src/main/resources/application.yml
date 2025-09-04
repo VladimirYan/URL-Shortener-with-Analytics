@@ -13,6 +13,10 @@ spring:
     password: shortenerpass
     driver-class-name: org.postgresql.Driver
 
+  flyway:
+    enabled: false
+    locations: classpath:db/migration
+
   jpa:
     hibernate:
       ddl-auto: update

@@ -11,21 +11,19 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS short_urls (
     id BIGSERIAL PRIMARY KEY,
-    short_key VARCHAR(128) NOT NULL,
+    short_key VARCHAR(128) NOT NULL UNIQUE,
     original_url TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ,
     owner_id BIGINT,
     clicks BIGINT NOT NULL DEFAULT 0,
     description VARCHAR(512),
-    metadata JSONB,
-    CONSTRAINT uq_short_key UNIQUE (short_key)
+    metadata JSONB
 );
 
-ALTER TABLE short_urls
-ADD CONSTRAINT fk_short_urls_owner
-FOREIGN KEY (owner_id) REFERENCES users(id)
-ON DELETE SET NULL;
+ALTER TABLE IF EXISTS short_urls
+    ADD CONSTRAINT IF NOT EXISTS fk_short_urls_owner
+    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS redirect_events (
     id BIGSERIAL PRIMARY KEY,
@@ -45,10 +43,9 @@ CREATE TABLE IF NOT EXISTS redirect_events (
     metadata JSONB
 );
 
-ALTER TABLE redirect_events
-ADD CONSTRAINT fk_redirect_events_shorturl
-FOREIGN KEY (short_url_id) REFERENCES short_urls(id)
-ON DELETE SET NULL;
+ALTER TABLE IF EXISTS redirect_events
+    ADD CONSTRAINT IF NOT EXISTS fk_redirect_events_shorturl
+    FOREIGN KEY (short_url_id) REFERENCES short_urls(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_short_urls_short_key ON short_urls (short_key);
 CREATE INDEX IF NOT EXISTS idx_short_urls_owner_id ON short_urls (owner_id);
@@ -65,7 +62,6 @@ CREATE TABLE IF NOT EXISTS url_clicks_aggregate (
     PRIMARY KEY (short_url_id, period_date)
 );
 
-ALTER TABLE url_clicks_aggregate
-ADD CONSTRAINT fk_agg_shorturl
-FOREIGN KEY (short_url_id) REFERENCES short_urls(id)
-ON DELETE CASCADE;
+ALTER TABLE IF EXISTS url_clicks_aggregate
+    ADD CONSTRAINT IF NOT EXISTS fk_agg_shorturl
+    FOREIGN KEY (short_url_id) REFERENCES short_urls(id) ON DELETE CASCADE;
